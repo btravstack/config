@@ -1,0 +1,37 @@
+{
+  "name": "@btravstack/oxlint",
+  "version": "0.1.0",
+  "description": "Shared oxlint config for btravstack packages (no-explicit-any, type-only definitions)",
+  "keywords": [
+    "config",
+    "lint",
+    "oxlint"
+  ],
+  "homepage": "https://github.com/btravstack/config/tree/main/packages/oxlint#readme",
+  "bugs": {
+    "url": "https://github.com/btravstack/config/issues"
+  },
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git",
+    "directory": "packages/oxlint"
+  },
+  "files": [
+    "base.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "oxlint": ">=1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

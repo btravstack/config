@@ -1,0 +1,35 @@
+{
+  "name": "@btravstack/config-root",
+  "private": true,
+  "description": "Shared configuration packages for btravstack repositories",
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git"
+  },
+  "type": "module",
+  "scripts": {
+    "changeset": "changeset",
+    "format": "oxfmt .",
+    "lint": "oxlint .",
+    "prepare": "lefthook install",
+    "release": "changeset publish",
+    "test": "node scripts/validate.mjs",
+    "version": "changeset version"
+  },
+  "devDependencies": {
+    "@btravstack/commitlint": "workspace:*",
+    "@btravstack/lefthook": "workspace:*",
+    "@btravstack/oxlint": "workspace:*",
+    "@changesets/cli": "catalog:",
+    "@commitlint/cli": "catalog:",
+    "lefthook": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.7.0"
+}

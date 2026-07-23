@@ -1,0 +1,37 @@
+{
+  "name": "@btravstack/lefthook",
+  "version": "0.1.0",
+  "description": "Shared lefthook git-hooks preset for btravstack packages",
+  "keywords": [
+    "config",
+    "git-hooks",
+    "lefthook"
+  ],
+  "homepage": "https://github.com/btravstack/config/tree/main/packages/lefthook#readme",
+  "bugs": {
+    "url": "https://github.com/btravstack/config/issues"
+  },
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git",
+    "directory": "packages/lefthook"
+  },
+  "files": [
+    "lefthook.yml"
+  ],
+  "type": "module",
+  "exports": {
+    "./lefthook.yml": "./lefthook.yml"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "lefthook": ">=2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

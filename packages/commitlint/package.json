@@ -1,0 +1,42 @@
+{
+  "name": "@btravstack/commitlint",
+  "version": "0.1.0",
+  "description": "Shared commitlint (conventional commits) preset for btravstack packages",
+  "keywords": [
+    "commitlint",
+    "config",
+    "conventional-commits"
+  ],
+  "homepage": "https://github.com/btravstack/config/tree/main/packages/commitlint#readme",
+  "bugs": {
+    "url": "https://github.com/btravstack/config/issues"
+  },
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git",
+    "directory": "packages/commitlint"
+  },
+  "files": [
+    "index.js"
+  ],
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@commitlint/config-conventional": "catalog:"
+  },
+  "peerDependencies": {
+    "@commitlint/cli": ">=21"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

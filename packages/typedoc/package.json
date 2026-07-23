@@ -1,0 +1,38 @@
+{
+  "name": "@btravstack/typedoc",
+  "version": "0.1.0",
+  "description": "Shared TypeDoc (markdown) configuration for btravstack packages",
+  "keywords": [
+    "config",
+    "markdown",
+    "typedoc"
+  ],
+  "homepage": "https://github.com/btravstack/config/tree/main/packages/typedoc#readme",
+  "bugs": {
+    "url": "https://github.com/btravstack/config/issues"
+  },
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git",
+    "directory": "packages/typedoc"
+  },
+  "files": [
+    "base.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "typedoc": ">=0.28",
+    "typedoc-plugin-markdown": ">=4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

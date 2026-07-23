@@ -1,0 +1,37 @@
+{
+  "name": "@btravstack/oxfmt",
+  "version": "0.1.0",
+  "description": "Shared oxfmt config for btravstack packages (copy-template; oxfmt has no extends)",
+  "keywords": [
+    "config",
+    "format",
+    "oxfmt"
+  ],
+  "homepage": "https://github.com/btravstack/config/tree/main/packages/oxfmt#readme",
+  "bugs": {
+    "url": "https://github.com/btravstack/config/issues"
+  },
+  "license": "MIT",
+  "author": "Benoit TRAVERS <benoit.travers.fr@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btravstack/config.git",
+    "directory": "packages/oxfmt"
+  },
+  "files": [
+    "base.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "oxfmt": ">=0.58"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
