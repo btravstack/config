@@ -3,9 +3,21 @@
 #
 #   extends:
 #     - node_modules/@btravstack/lefthook/lefthook.yml
+#   pre-commit:
+#     commands:
+#       format:
+#         exclude: ["pnpm-lock.yaml", "docs/api/*"]   # repo-specific
 #
 # It assumes the consumer has oxfmt, oxlint, and commitlint available (via the
 # @btravstack/oxfmt, @btravstack/oxlint, @btravstack/commitlint peers).
+#
+# NOTE: this base deliberately sets NO `exclude` on the format/lint commands.
+# lefthook's `extends` merge lets the EXTENDED (this) file OVERRIDE the local one
+# for keys it defines — so if this base set `format.exclude`, a consumer could
+# not layer its own excludes on top (the base's list would win). By omitting the
+# key here, each repo declares its full `exclude` locally (which merges in) —
+# excludes are repo-specific anyway (generated docs dirs, lockfile, type-only
+# tests). Every consumer should at minimum exclude `pnpm-lock.yaml` from format.
 pre-commit:
   parallel: true
   commands:
@@ -14,11 +26,6 @@ pre-commit:
       # ANY depth including the repo root. `**/*.x` requires a leading directory,
       # so root files (`README.md`, root `*.json`) would silently never match.
       glob: "*.{ts,tsx,js,jsx,json,yaml,yml,md}"
-      # Handing oxfmt ONLY ignored files makes it exit non-zero, which would fail
-      # a commit touching only those. Exclude the lockfile here so the step is
-      # skipped instead. Extend this list in the consumer repo as needed.
-      exclude:
-        - "pnpm-lock.yaml"
       run: pnpm oxfmt {staged_files}
       stage_fixed: true
     lint:
