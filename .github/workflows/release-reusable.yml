@@ -1,0 +1,78 @@
+# Reusable release workflow for btravstack repos (changesets + npm Trusted
+# Publishing). Consumers call it after CI succeeds on main:
+#
+#   name: Release
+#   on:
+#     workflow_run:
+#       workflows: ["CI"]
+#       types: [completed]
+#       branches: [main]
+#   jobs:
+#     release:
+#       if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#       uses: btravstack/config/.github/workflows/release-reusable.yml@main
+#       secrets:
+#         RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+#
+# Each published package still needs a Trusted Publisher configured on npmjs.com
+# pointing at the CONSUMER repo + its release workflow file (NPM_TOKEN is not
+# used — publishing rides the OIDC token minted by `id-token: write`).
+name: Release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      version-command:
+        description: "Command changesets/action runs to version packages."
+        type: string
+        default: "pnpm run version"
+      publish-command:
+        description: "Command changesets/action runs to publish."
+        type: string
+        default: "pnpm run release"
+    secrets:
+      RELEASE_PAT:
+        description: "PAT with Contents + Pull requests write (fires CI on the release PR)."
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # PAT so the release PR is created with credentials that DO fire
+          # `pull_request` workflows (the bare GITHUB_TOKEN push is treated as a
+          # bot event and would skip CI on the "Version Packages" branch).
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Release Pull Request or Publish to npm
+        uses: changesets/action@v1
+        with:
+          version: ${{ inputs.version-command }}
+          publish: ${{ inputs.publish-command }}
+          commit: "chore: release packages"
+          title: "chore: release packages"
+        env:
+          # PAT (not GITHUB_TOKEN): GITHUB_TOKEN-triggered events don't start new
+          # workflow runs, so the "Version Packages" PR would otherwise skip CI.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}

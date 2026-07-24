@@ -1,0 +1,105 @@
+# Reusable CI workflow for btravstack repos. Consumers call it from a thin
+# `.github/workflows/ci.yml`:
+#
+#   name: CI
+#   on:
+#     push: { branches: [main] }
+#     pull_request: { branches: [main] }
+#   jobs:
+#     ci:
+#       uses: btravstack/config/.github/workflows/ci-reusable.yml@main
+#       with:
+#         knip: true            # optional, default true
+#         changeset: true       # optional, default false (contract repos: true)
+#
+# A single job runs the whole gate after one install (cheaper than re-installing
+# per parallel job). Repo-specific jobs (bundle-size, integration tests, docs
+# deploy) stay in the caller's own workflow file alongside this call.
+name: CI (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      knip:
+        description: "Run `pnpm knip`."
+        type: boolean
+        default: true
+      changeset:
+        description: "On PRs, fail if a versioned package changed without a changeset."
+        type: boolean
+        default: false
+      security-audit:
+        description: "Run `pnpm audit --audit-level=high`."
+        type: boolean
+        default: true
+      test-command:
+        description: "Command used to run tests."
+        type: string
+        default: "pnpm test"
+      node-version-file:
+        description: "File the Node version is read from."
+        type: string
+        default: ".node-version"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Full history so the changeset check can diff against origin/main.
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format
+        run: pnpm format --check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Knip
+        if: ${{ inputs.knip }}
+        run: pnpm knip
+
+      - name: Test
+        run: ${{ inputs.test-command }}
+
+      - name: Build
+        run: pnpm build
+
+      - name: Security audit
+        if: ${{ inputs.security-audit }}
+        run: pnpm audit --audit-level=high
+
+      # Only on PRs, and never on the changesets "Version Packages" PR (which
+      # consumes changesets while bumping every package — exactly what this gate
+      # would reject). The head repo must be this repository (fork PRs can't spoof
+      # the exemption via branch name).
+      - name: Changeset status
+        if: >-
+          ${{ inputs.changeset
+              && github.event_name == 'pull_request'
+              && !(github.head_ref == 'changeset-release/main'
+                   && github.event.pull_request.head.repo.full_name == github.repository) }}
+        run: |
+          git fetch --no-tags origin main
+          pnpm exec changeset status --since=origin/main

@@ -80,6 +80,49 @@ Releases flow through [changesets](https://github.com/changesets/changesets) and
 npm **Trusted Publishing** (OIDC — no `NPM_TOKEN`). Add a changeset with
 `pnpm changeset`; merging the generated "release packages" PR publishes.
 
+## Reusable GitHub workflows
+
+Two reusable workflows live under [`.github/workflows`](.github/workflows) so
+consumer repos stop hand-copying CI/release YAML:
+
+- **`ci-reusable.yml`** — one job that runs the whole gate after a single install
+  (format → lint → typecheck → knip → test → build → audit → optional changeset
+  check). Inputs: `knip`, `changeset`, `security-audit`, `test-command`,
+  `node-version-file`.
+- **`release-reusable.yml`** — changesets + npm Trusted Publishing. Takes a
+  `RELEASE_PAT` secret.
+
+Consume them from thin caller workflows:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+jobs:
+  ci:
+    uses: btravstack/config/.github/workflows/ci-reusable.yml@main
+    with:
+      changeset: true # contract repos that enforce changesets
+```
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+on:
+  workflow_run: { workflows: ["CI"], types: [completed], branches: [main] }
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    uses: btravstack/config/.github/workflows/release-reusable.yml@main
+    secrets:
+      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+```
+
+Repo-specific jobs (bundle-size, integration tests, docs deploy) stay in the
+caller's own workflow file alongside the `uses:` call.
+
 ## License
 
 MIT © Benoit Travers
