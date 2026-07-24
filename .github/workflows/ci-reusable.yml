@@ -49,9 +49,9 @@ on:
         type: string
         default: "pnpm test -- --coverage --reporter=default --reporter=github-actions"
       integration-command:
-        description: "Integration test command."
+        description: "Integration test command (capped concurrency for testcontainers)."
         type: string
-        default: "pnpm test:integration -- --coverage --reporter=default --reporter=github-actions"
+        default: "pnpm test:integration --concurrency 3 -- --coverage --reporter=default --reporter=github-actions"
       node-floor:
         description: "Extra Node version to build+test on (the engines floor). Empty skips."
         type: string
