@@ -22,6 +22,8 @@ point at the file inside `node_modules`:
 `base.json` enables:
 
 - `@typescript-eslint/no-explicit-any` — `error`
+- `@typescript-eslint/consistent-type-imports` — `error` (type-only imports must use
+  a `type` specifier; autofixable with `oxlint --fix`, inline style)
 - `typescript/consistent-type-definitions` — `["error", "type"]` (no `interface`)
 
 Add your own rules and `ignorePatterns` in the consuming config; later entries

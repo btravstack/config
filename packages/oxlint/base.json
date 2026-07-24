@@ -1,6 +1,10 @@
 {
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
     "typescript/consistent-type-definitions": ["error", "type"]
   }
 }
