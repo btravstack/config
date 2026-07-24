@@ -11,7 +11,7 @@
 #       with:
 #         changeset: true          # contract repos that enforce changesets
 #         integration-tests: true  # run the integration suite
-#         node-floor: "22.19"      # also test on the engines floor
+#         node-versions: '["", "22.19"]'  # test the primary + the engines floor
 #
 # Each check is its OWN job so the PR check summary lists them individually
 # (Format, Lint, Type Check, …) rather than one opaque job. The unit/integration
@@ -52,10 +52,10 @@ on:
         description: "Integration test command (capped concurrency for testcontainers)."
         type: string
         default: "pnpm test:integration --concurrency 3 -- --coverage --reporter=default --reporter=github-actions"
-      node-floor:
-        description: "Extra Node version to build+test on (the engines floor). Empty skips."
+      node-versions:
+        description: 'JSON array of Node versions the test job runs on; "" = the .node-version file. e.g. ["", "22.19"] tests the primary + the engines floor.'
         type: string
-        default: ""
+        default: '[""]'
       node-version-file:
         description: "File the primary Node version is read from."
         type: string
@@ -160,38 +160,26 @@ jobs:
       - run: pnpm exec knip --reporter github-actions
 
   test:
-    name: Tests
+    # "" -> the .node-version file (shows as "Tests"); a version -> "Tests (Node <ver>)".
+    name: Tests${{ matrix.node != '' && format(' (Node {0})', matrix.node) || '' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ${{ fromJSON(inputs.node-versions) }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
+          # setup-node ignores an empty node-version and falls back to the file.
+          node-version: ${{ matrix.node }}
           node-version-file: ${{ inputs.node-version-file }}
           cache: pnpm
       - uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
-      - run: pnpm install --frozen-lockfile
-      - run: ${{ inputs.test-command }}
-
-  test-floor:
-    name: Tests (Node ${{ inputs.node-floor }})
-    if: ${{ inputs.node-floor != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ inputs.node-floor }}
-          cache: pnpm
-      - uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-floor-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-node${{ matrix.node }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
       - run: ${{ inputs.test-command }}
