@@ -7,53 +7,53 @@
 #     pull_request: { branches: [main] }
 #   jobs:
 #     ci:
-#       uses: btravstack/config/.github/workflows/ci-reusable.yml@main
+#       uses: btravstack/config/.github/workflows/ci-reusable.yml@workflows-v1
 #       with:
 #         changeset: true          # contract repos that enforce changesets
-#         bundle-size: true        # report per-package dist sizes
-#         integration-tests: true  # run `test:integration`
-#         node-floor: "22.19.0"    # also run tests on the engines floor
+#         integration-tests: true  # run the integration suite
+#         node-floor: "22.19"      # also test on the engines floor
 #
-# The gate (format → lint → typecheck → build → knip → test → audit) runs in one
-# job after a single install. `build` runs BEFORE `knip` so codegen (e.g. a Prisma
-# client wired as a turbo build dependency) exists when knip resolves imports — no
-# repo-specific pre-step needed. Optional jobs (node-floor matrix, bundle-size,
-# integration) are toggled by inputs so callers stay thin.
+# Each check is its OWN job so the PR check summary lists them individually
+# (Format, Lint, Type Check, …) rather than one opaque job. The unit/integration
+# test commands and bundle-size reporting are standardized here (identical across
+# repos) — callers only toggle what genuinely differs (integration, changeset,
+# node-floor). knip runs standalone (repos scope `!generated` in knip.json, so no
+# codegen pre-step is needed). Every job restores the `.turbo` cache.
 name: CI (reusable)
 
 on:
   workflow_call:
     inputs:
       knip:
-        description: "Run knip (after build, with github-actions annotations)."
+        description: "Run the Knip job."
         type: boolean
         default: true
       changeset:
-        description: "On PRs, fail if a versioned package changed without a changeset."
+        description: "Run the changeset-status job on PRs."
         type: boolean
         default: false
       security-audit:
-        description: "Run `pnpm audit --audit-level=high`."
+        description: "Run the security-audit job."
         type: boolean
         default: true
       bundle-size:
-        description: "Report per-package `dist` sizes to the run summary."
+        description: "Run the bundle-size report job."
         type: boolean
-        default: false
+        default: true
       integration-tests:
-        description: "Run the integration test command in a separate job."
+        description: "Run the integration-tests job."
         type: boolean
         default: false
       test-command:
-        description: "Command used to run unit tests."
+        description: "Unit test command (standardized; override only if a repo truly differs)."
         type: string
-        default: "pnpm test"
+        default: "pnpm test -- --coverage --reporter=default --reporter=github-actions"
       integration-command:
-        description: "Command used to run integration tests."
+        description: "Integration test command."
         type: string
-        default: "pnpm test:integration"
+        default: "pnpm test:integration -- --coverage --reporter=default --reporter=github-actions"
       node-floor:
-        description: "Extra Node version to also run build+test on (the engines floor). Empty skips."
+        description: "Extra Node version to build+test on (the engines floor). Empty skips."
         type: string
         default: ""
       node-version-file:
@@ -65,141 +65,191 @@ permissions:
   contents: read
 
 env:
-  # Keep bundled JS actions on Node 24 (matches the repos' prior workflow-level env).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  ci:
-    name: CI
+  format:
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # so the changeset check can diff against origin/main
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: ${{ inputs.node-version-file }}
           cache: pnpm
-
-      - name: Turbo cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format --check
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
-      - name: Format
-        run: pnpm format --check
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
 
-      - name: Lint
-        run: pnpm lint
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
-      - name: Type check
-        run: pnpm typecheck
+  knip:
+    name: Knip
+    if: ${{ inputs.knip }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec knip --reporter github-actions
 
-      # Before knip: turbo build generates any codegen (e.g. Prisma client) that
-      # knip needs to resolve imports, so knip needs no repo-specific pre-step.
-      - name: Build
-        run: pnpm build
-
-      - name: Knip
-        if: ${{ inputs.knip }}
-        run: pnpm exec knip --reporter github-actions
-
-      - name: Test
-        run: ${{ inputs.test-command }}
-
-      - name: Security audit
-        if: ${{ inputs.security-audit }}
-        run: pnpm audit --audit-level=high
-
-      # Only on PRs, and never on the changesets "Version Packages" PR.
-      - name: Changeset status
-        if: >-
-          ${{ inputs.changeset
-              && github.event_name == 'pull_request'
-              && !(github.head_ref == 'changeset-release/main'
-                   && github.event.pull_request.head.repo.full_name == github.repository) }}
-        run: |
-          git fetch --no-tags origin main
-          pnpm exec changeset status --since=origin/main
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ inputs.test-command }}
 
   test-floor:
     name: Tests (Node ${{ inputs.node-floor }})
     if: ${{ inputs.node-floor != '' }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ["${{ inputs.node-floor }}"]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ inputs.node-floor }}
           cache: pnpm
-
-      - name: Turbo cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-floor-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ inputs.test-command }}
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
+  security-audit:
+    name: Security Audit
+    if: ${{ inputs.security-audit }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high
 
-      - name: Build
-        run: pnpm build
-
-      - name: Test
-        run: ${{ inputs.test-command }}
+  changeset:
+    name: Changeset
+    if: >-
+      ${{ inputs.changeset
+          && github.event_name == 'pull_request'
+          && !(github.head_ref == 'changeset-release/main'
+               && github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          git fetch --no-tags origin main
+          pnpm exec changeset status --since=origin/main
 
   bundle-size:
     name: Bundle Size
     if: ${{ inputs.bundle-size }}
-    needs: ci
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: ${{ inputs.node-version-file }}
           cache: pnpm
-
-      - name: Turbo cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - name: Report bundle sizes
         run: |
           echo "## Bundle Sizes" >> $GITHUB_STEP_SUMMARY
@@ -219,27 +269,16 @@ jobs:
     if: ${{ inputs.integration-tests }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: ${{ inputs.node-version-file }}
           cache: pnpm
-
-      - name: Turbo cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Run integration tests
-        run: ${{ inputs.integration-command }}
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ inputs.integration-command }}
