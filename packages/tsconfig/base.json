@@ -6,7 +6,7 @@
 
     "target": "ES2022",
     "lib": ["ES2023"],
-    "types": ["node"],
+    "moduleDetection": "force",
 
     "resolveJsonModule": true,
     "allowJs": true,
@@ -17,6 +17,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
